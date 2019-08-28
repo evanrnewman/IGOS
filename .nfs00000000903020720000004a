@@ -1,0 +1,91 @@
+[I 15:22:10.706 NotebookApp] Serving notebooks from local directory: /nfs/stak/users/lamki/exai/IGOS
+[I 15:22:10.707 NotebookApp] The Jupyter Notebook is running at:
+[I 15:22:10.707 NotebookApp] http://localhost:8888/?token=1da6640c308b9ce017650f7afc71f851653d8d233259515c
+[I 15:22:10.707 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 15:22:10.741 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///nfs/stak/users/lamki/.local/share/jupyter/runtime/nbserver-39098-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:8888/?token=1da6640c308b9ce017650f7afc71f851653d8d233259515c
+Refresh (1 sec) http://localhost:8888/tree?token=
+1da6640c308b9ce017650f7afc71f851653d8d233259515c
+
+This page should redirect you to Jupyter Notebook. If it doesn't, click here to
+go to Jupyter.
+
+[C 15:22:44.092 NotebookApp] received signal 15, stopping
+[I 15:22:44.107 NotebookApp] Shutting down 0 kernels
+[I 15:23:14.702 NotebookApp] Serving notebooks from local directory: /nfs/stak/users/lamki/exai/IGOS
+[I 15:23:14.702 NotebookApp] The Jupyter Notebook is running at:
+[I 15:23:14.702 NotebookApp] http://localhost:8888/?token=64a474e203c9e16c6e7ffde1f722dfdedaeeac562589e6be
+[I 15:23:14.703 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 15:23:14.739 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///nfs/stak/users/lamki/.local/share/jupyter/runtime/nbserver-39495-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:8888/?token=64a474e203c9e16c6e7ffde1f722dfdedaeeac562589e6be
+Refresh (1 sec) http://localhost:8888/tree?token=
+64a474e203c9e16c6e7ffde1f722dfdedaeeac562589e6be
+
+This page should redirect you to Jupyter Notebook. If it doesn't, click here to
+go to Jupyter.
+
+[I 15:23:46.119 NotebookApp] 302 GET / (::1) 0.82ms
+[I 15:23:53.454 NotebookApp] Creating new notebook in 
+[I 15:24:02.268 NotebookApp] Kernel started: c7e7f476-2b2e-4d50-b290-1be28fd42093
+[I 15:24:15.114 NotebookApp] Adapting to protocol v5.1 for kernel c7e7f476-2b2e-4d50-b290-1be28fd42093
+[I 15:24:16.964 NotebookApp] Saving file at /Untitled.ipynb
+[I 15:26:02.133 NotebookApp] Saving file at /autoencoder.ipynb
+[I 15:32:02.175 NotebookApp] Saving file at /autoencoder.ipynb
+[I 15:32:04.388 NotebookApp] Starting buffering for c7e7f476-2b2e-4d50-b290-1be28fd42093:d8184995eb834adf8932b0bfc5d26645
+[I 12:56:33.818 NotebookApp] 302 GET / (::1) 0.88ms
+[I 12:57:59.334 NotebookApp] Kernel shutdown: c7e7f476-2b2e-4d50-b290-1be28fd42093
+[W 12:57:59.337 NotebookApp] delete /Results
+[W 12:57:59.353 NotebookApp] delete /autoencoder.ipynb
+[I 12:58:05.067 NotebookApp] Creating new notebook in 
+[I 12:58:12.368 NotebookApp] Kernel started: 23b7b7f2-41ee-4f53-87b2-164e59467815
+[I 12:58:24.469 NotebookApp] Adapting to protocol v5.1 for kernel 23b7b7f2-41ee-4f53-87b2-164e59467815
+[I 13:00:12.411 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:05:03.391 NotebookApp] Starting buffering for 23b7b7f2-41ee-4f53-87b2-164e59467815:310f8118b7c443caa0db71cf5f147719
+[I 13:06:16.962 NotebookApp] 302 GET / (::1) 0.43ms
+[I 13:09:35.626 NotebookApp] Adapting to protocol v5.1 for kernel 23b7b7f2-41ee-4f53-87b2-164e59467815
+[I 13:19:35.581 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:21:35.597 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:22:29.553 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:22:48.216 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:23:18.424 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:23:35.703 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:23:56.087 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:26:06.362 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:26:07.154 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:26:19.958 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:26:59.662 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:27:35.698 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:32:42.403 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:33:35.664 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:37:31.476 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:37:35.668 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:39:35.684 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:40:39.209 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:41:15.364 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:41:16.723 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:41:35.687 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:42:32.745 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:43:35.733 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:45:12.253 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:45:35.662 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:47:35.697 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:48:09.695 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:48:12.242 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:48:19.622 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:48:40.638 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:49:03.637 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:49:17.289 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:49:35.837 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:55:35.723 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:56:04.077 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:56:07.162 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:57:35.681 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
+[I 13:58:42.102 NotebookApp] Saving file at /igos-pysc2-nexus-hp.ipynb
