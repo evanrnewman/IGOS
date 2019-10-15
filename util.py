@@ -3,6 +3,9 @@
 # python Version: python3.6
 # by Zhongang Qi (qiz@oregonstate.edu)
 import torch
+import torch.nn as nn
+from torch.optim import Adam, SGD
+from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torchvision import models
 import cv2
@@ -12,6 +15,7 @@ import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
 from skimage import filters
+from collections import OrderedDict
 
 use_cuda = torch.cuda.is_available()
 FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
@@ -93,6 +97,58 @@ def numpy_to_torch(img, use_cuda=1, requires_grad=False):
 
 
 
+def weights_initialize(module):
+    if type(module) == nn.Linear:
+        nn.init.xavier_uniform_(module.weight, gain=nn.init.calculate_gain('relu'))
+        module.bias.data.fill_(0.01)
+
+class qFunction(nn.Module):
+    """ Model for q-function """
+    
+    def __init__(self):
+        super(qFunction, self).__init__()
+        
+        self.input_len = 68
+        self.output_len = 8
+        
+        self.layers = nn.Sequential(
+            nn.Linear(self.input_len, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(256, self.output_len)
+        )
+    
+        self.softmax_func = nn.Softmax()
+
+        self.layers.apply(weights_initialize)
+        
+    def forward(self, input):
+        x = input
+        for layer in self.layers:
+            if type(layer) == nn.Linear:
+                x = x.view(-1, int(np.prod(x.shape[1:])))
+            x = layer(x)
+            
+        x = self.softmax_func(x)
+        return x
+
+def predict(model, input, steps):
+    q_values = model(input).squeeze(1)
+
+    return q_values
+
+def predict_batch(model, input):
+    if use_cuda:
+        input = input.cuda()
+    q_values = model(input)
+#         values, q_actions = q_values.max(1)
+    return q_values
+
+
+
 
 def load_model_new(use_cuda = 1, model_name = 'resnet50'):
 
@@ -100,6 +156,19 @@ def load_model_new(use_cuda = 1, model_name = 'resnet50'):
         model = models.resnet50(pretrained=True)
     elif model_name == 'vgg19':
         model = models.vgg19(pretrained=True)
+    elif model_name == 'q_function':
+        qmodel = qFunction()
+
+        qtest = torch.load("q_model_decom8_grid.pt", map_location = 'cpu')
+
+        new_dict = OrderedDict()
+        new_keys = list(qmodel.state_dict().keys())
+
+        for i, (key, weight) in enumerate(qtest.items()):
+            new_dict[new_keys[i]] = weight
+
+        model = qmodel.load_state_dict(new_dict)
+
 
     #print(model)
     model.eval()

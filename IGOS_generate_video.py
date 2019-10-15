@@ -38,9 +38,10 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
     # use_cuda: use gpu (1) or not (0)
     ####################################################
 
-    original_img = cv2.imread(input_img, 1)
-    original_img = cv2.resize(original_img, resize_shape)
-    img = np.float32(original_img) / 255
+    # EVAN: all this is doing img manipulation not needed for an already 1d vector input we have
+    # original_img = cv2.imread(input_img, 1)
+    # original_img = cv2.resize(original_img, resize_shape)
+    # img = np.float32(original_img) / 255
 
     if blur_type =='Gaussian':   # Gaussian blur
         Kernelsize = Gaussian_param[0]
@@ -60,6 +61,8 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
         blurred_img2 = np.float32(cv2.medianBlur(original_img, Kernelsize_M)) / 255
 
         blurred_img = (blurred_img1 + blurred_img2) / 2
+    elif blur_type == 'q_function':
+        # do nothing
 
     img_torch = preprocess_image(img, use_cuda, require_grad = False)
     blurred_img_torch = preprocess_image(blurred_img, use_cuda, require_grad = False)
@@ -661,59 +664,69 @@ if __name__ == '__main__':
 
     files = os.listdir(input_path)
     print(files)
-    model = load_model_new(use_cuda=use_cuda, model_name='vgg19')  #
+    model = load_model_new(use_cuda=use_cuda, model_name='q_function')  #
 
-    for imgname in files:
-        # if imgname.endswith('jpg'):
-        if imgname.endswith('JPEG'):
-            input_img = input_path + imgname
-            print('imgname:', imgname)
-            img_label = -1
+    # EVAN: want input examples instead of pictures in imgs directory
+    # EVAN: code was indented to this comment
+# for imgname in files:
+    # if imgname.endswith('jpg'):
+    # if imgname.endswith('JPEG'):
+        # input_img = input_path + imgname
+        # print('imgname:', imgname)
 
-            img, blurred_img, logitori = Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224),
-                                                         Gaussian_param=[51, 50],
-                                                         Median_param=11, blur_type='Gaussian', use_cuda=use_cuda)
+        # EVAN: indeneted to this comment
+        # EVAN: input_img -- needs to be vector
+        # EVAN: img_label -- not sure what to put this as keeping as -1
+    input_img = []
+    img_label = -1
 
-            mask, upsampled_mask, imgratio, curvetop, curve1, curve2, category = Integrated_Mask(img, blurred_img, model,
-                                                                                                     img_label,
-                                                                                                     max_iterations=15,
-                                                                                                     integ_iter=20,
-                                                                                                     tv_beta=2,
-                                                                                                     l1_coeff=0.01 * 100,
-                                                                                                     tv_coeff=0.2 * 100,
-                                                                                                     size_init=28,
-                                                                                                     use_cuda=1)  #
+    # EVAN: This is experimenting with different baselines not there yet...
+    img, blurred_img, logitori = Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224),
+                                                    Gaussian_param=[51, 50],
+                                                    Median_param=11, blur_type='Gaussian', use_cuda=use_cuda)
 
-
-
-
-            outvideo_path = output_path + imgname[:-5] + '/'
-            if not os.path.isdir(outvideo_path):
-                os.makedirs(outvideo_path)
-
-            output_file = output_path + imgname[:-4] + '_IGOS_'
-            save_heatmap(output_file, upsampled_mask, img * 255, blurred_img, blur_mask=0)
-
-            #scio.savemat(outvideo_path + imgname[:-5] + 'Mask' + '.mat',
-            #             mdict={'mask': mask},
-            #             oned_as='column')
+    # EVAN: This is giving the mask back
+    mask, upsampled_mask, imgratio, curvetop, curve1, curve2, category = Integrated_Mask(img, blurred_img, model,
+                                                                                                img_label,
+                                                                                                max_iterations=15,
+                                                                                                integ_iter=20,
+                                                                                                tv_beta=2,
+                                                                                                l1_coeff=0.01 * 100,
+                                                                                                tv_coeff=0.2 * 100,
+                                                                                                size_init=28,
+                                                                                                use_cuda=1)  #
 
 
-            output_file = outvideo_path + imgname[:-5] + '_IGOS_'
-            del_img, ins_img, delloss_top2, insloss_top2, del_ratio, ins_ratio, outmax, cateout, xnum = Deletion_Insertion(mask,
-                                                                                                                           model,
-                                                                                                                           output_file,
-                                                                                                                           img,
-                                                                                                                           blurred_img,
-                                                                                                                           logitori,
-                                                                                                                           category=-1,
-                                                                                                                           pixelnum=200,
-                                                                                                                           use_cuda=1,
-                                                                                                                           blur_mask=0,
-                                                                                                                           outputfig=1)
 
-            video_name = outvideo_path + 'AllVideo_fps10' + imgname[:-5] + '.avi'
-            write_video(output_file, video_name, xnum, fps=3)
+
+    outvideo_path = output_path + imgname[:-5] + '/'
+    if not os.path.isdir(outvideo_path):
+        os.makedirs(outvideo_path)
+
+    output_file = output_path + imgname[:-4] + '_IGOS_'
+    save_heatmap(output_file, upsampled_mask, img * 255, blurred_img, blur_mask=0)
+
+    #scio.savemat(outvideo_path + imgname[:-5] + 'Mask' + '.mat',
+    #             mdict={'mask': mask},
+    #             oned_as='column')
+
+
+    output_file = outvideo_path + imgname[:-5] + '_IGOS_'
+    # EVAN: This is doing the metric of how well the heat map did
+    del_img, ins_img, delloss_top2, insloss_top2, del_ratio, ins_ratio, outmax, cateout, xnum = Deletion_Insertion(mask,
+                                                                                                                    model,
+                                                                                                                    output_file,
+                                                                                                                    img,
+                                                                                                                    blurred_img,
+                                                                                                                    logitori,
+                                                                                                                    category=-1,
+                                                                                                                    pixelnum=200,
+                                                                                                                    use_cuda=1,
+                                                                                                                    blur_mask=0,
+                                                                                                                    outputfig=1)
+
+    video_name = outvideo_path + 'AllVideo_fps10' + imgname[:-5] + '.avi'
+    write_video(output_file, video_name, xnum, fps=3)
 
 
 
