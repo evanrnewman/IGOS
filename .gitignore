@@ -105,3 +105,6 @@ venv.bak/
 
 # sc2 data
 data/
+
+#vs code specifics
+.vscode
