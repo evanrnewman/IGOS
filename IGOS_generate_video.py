@@ -42,6 +42,7 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
     # original_img = cv2.imread(input_img, 1)
     # original_img = cv2.resize(original_img, resize_shape)
     # img = np.float32(original_img) / 255
+    img = input_img
 
     if blur_type =='Gaussian':   # Gaussian blur
         Kernelsize = Gaussian_param[0]
@@ -62,6 +63,7 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
 
         blurred_img = (blurred_img1 + blurred_img2) / 2
     elif blur_type == 'q_function':
+        print('do nothing')
         # do nothing
 
     img_torch = preprocess_image(img, use_cuda, require_grad = False)
@@ -661,10 +663,14 @@ if __name__ == '__main__':
     output_path = './Results/VIDEO/'
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
+    
+    use_cuda = 0
+    if torch.cuda.is_available():
+        use_cuda = 1
 
     files = os.listdir(input_path)
-    print(files)
     model = load_model_new(use_cuda=use_cuda, model_name='q_function')  #
+    # print(model)
 
     # EVAN: want input examples instead of pictures in imgs directory
     # EVAN: code was indented to this comment
@@ -677,6 +683,19 @@ if __name__ == '__main__':
         # EVAN: indeneted to this comment
         # EVAN: input_img -- needs to be vector
         # EVAN: img_label -- not sure what to put this as keeping as -1
+    data = torch.load('test_dataset.pt')
+
+    data = np.asarray(data, dtype=np.float32)
+    data = Variable(torch.from_numpy(data))
+    # print(data[0][0], data[0][1])
+    print(data[0][0])
+    print(type(data[0][0][0]))
+
+    prediction = model(data[0][0])
+    print(prediction)
+    # to have blurred image just randomly select input at that column from dataset and create janky one that pulls from entire
+    # data set. This will create an input that spans all over the input space being impossible to predict i.e. "blurry"
+    #*********************************************
     input_img = []
     img_label = -1
 
@@ -699,34 +718,34 @@ if __name__ == '__main__':
 
 
 
-    outvideo_path = output_path + imgname[:-5] + '/'
-    if not os.path.isdir(outvideo_path):
-        os.makedirs(outvideo_path)
+    # outvideo_path = output_path + imgname[:-5] + '/'
+    # if not os.path.isdir(outvideo_path):
+    #     os.makedirs(outvideo_path)
 
-    output_file = output_path + imgname[:-4] + '_IGOS_'
-    save_heatmap(output_file, upsampled_mask, img * 255, blurred_img, blur_mask=0)
+    # output_file = output_path + imgname[:-4] + '_IGOS_'
+    # save_heatmap(output_file, upsampled_mask, img * 255, blurred_img, blur_mask=0)
 
-    #scio.savemat(outvideo_path + imgname[:-5] + 'Mask' + '.mat',
-    #             mdict={'mask': mask},
-    #             oned_as='column')
+    # #scio.savemat(outvideo_path + imgname[:-5] + 'Mask' + '.mat',
+    # #             mdict={'mask': mask},
+    # #             oned_as='column')
 
 
-    output_file = outvideo_path + imgname[:-5] + '_IGOS_'
-    # EVAN: This is doing the metric of how well the heat map did
-    del_img, ins_img, delloss_top2, insloss_top2, del_ratio, ins_ratio, outmax, cateout, xnum = Deletion_Insertion(mask,
-                                                                                                                    model,
-                                                                                                                    output_file,
-                                                                                                                    img,
-                                                                                                                    blurred_img,
-                                                                                                                    logitori,
-                                                                                                                    category=-1,
-                                                                                                                    pixelnum=200,
-                                                                                                                    use_cuda=1,
-                                                                                                                    blur_mask=0,
-                                                                                                                    outputfig=1)
+    # output_file = outvideo_path + imgname[:-5] + '_IGOS_'
+    # # EVAN: This is doing the metric of how well the heat map did
+    # del_img, ins_img, delloss_top2, insloss_top2, del_ratio, ins_ratio, outmax, cateout, xnum = Deletion_Insertion(mask,
+    #                                                                                                                 model,
+    #                                                                                                                 output_file,
+    #                                                                                                                 img,
+    #                                                                                                                 blurred_img,
+    #                                                                                                                 logitori,
+    #                                                                                                                 category=-1,
+    #                                                                                                                 pixelnum=200,
+    #                                                                                                                 use_cuda=1,
+    #                                                                                                                 blur_mask=0,
+    #                                                                                                                 outputfig=1)
 
-    video_name = outvideo_path + 'AllVideo_fps10' + imgname[:-5] + '.avi'
-    write_video(output_file, video_name, xnum, fps=3)
+    # video_name = outvideo_path + 'AllVideo_fps10' + imgname[:-5] + '.avi'
+    # write_video(output_file, video_name, xnum, fps=3)
 
 
 

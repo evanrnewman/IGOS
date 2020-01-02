@@ -118,21 +118,25 @@ class qFunction(nn.Module):
             nn.ReLU(),
             nn.Linear(1024, 256),
             nn.ReLU(),
-            nn.Linear(256, self.output_len)
+            nn.Linear(256, self.output_len),
+            nn.Softmax(dim=0)
         )
     
-        self.softmax_func = nn.Softmax()
+        # self.softmax_func = nn.Softmax()
 
         self.layers.apply(weights_initialize)
         
-    def forward(self, input):
-        x = input
-        for layer in self.layers:
-            if type(layer) == nn.Linear:
-                x = x.view(-1, int(np.prod(x.shape[1:])))
-            x = layer(x)
+    def forward(self, x):
+        x = self.layers(x)
+        # for layer in self.layers:
+        #     if type(layer) == nn.Linear:
+                # x = x.view(-1, int(np.prod(x.shape[1:])))
+                # print(np.shape(x))
+                # x = x.view(x.size(0), -1)
+                # print(np.shape(x))
+            # x = layer(x)
             
-        x = self.softmax_func(x)
+        # x = self.softmax_func(x)
         return x
 
 def predict(model, input, steps):
@@ -157,23 +161,14 @@ def load_model_new(use_cuda = 1, model_name = 'resnet50'):
     elif model_name == 'vgg19':
         model = models.vgg19(pretrained=True)
     elif model_name == 'q_function':
-        qmodel = qFunction()
+        model = qFunction()
 
-        qtest = torch.load("q_model_decom8_grid.pt", map_location = 'cpu')
-
-        new_dict = OrderedDict()
-        new_keys = list(qmodel.state_dict().keys())
-
-        for i, (key, weight) in enumerate(qtest.items()):
-            new_dict[new_keys[i]] = weight
-
-        model = qmodel.load_state_dict(new_dict)
-
+        model.load_state_dict(torch.load("q_model_decom8_grid.pt"), strict=False)
 
     #print(model)
     model.eval()
-    if use_cuda:
-        model.cuda()
+    # if use_cuda:
+    #     model.cuda()
 
     for p in model.parameters():
         p.requires_grad = False
