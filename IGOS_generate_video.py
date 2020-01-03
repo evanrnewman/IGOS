@@ -22,7 +22,8 @@ import cv2
 
 
 
-def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussian_param = [51, 50], Median_param = 11, blur_type= 'Gaussian', use_cuda = 1):
+def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussian_param = [51, 50], 
+                    Median_param = 11, blur_type= 'Gaussian', use_cuda = 1):
     ########################
     # Generate blurred images as the baseline
 
@@ -42,6 +43,7 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
     # original_img = cv2.imread(input_img, 1)
     # original_img = cv2.resize(original_img, resize_shape)
     # img = np.float32(original_img) / 255
+    original_img = input_img
     img = input_img
 
     if blur_type =='Gaussian':   # Gaussian blur
@@ -63,23 +65,37 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
 
         blurred_img = (blurred_img1 + blurred_img2) / 2
     elif blur_type == 'q_function':
-        print('do nothing')
-        # do nothing
+        # Totally random array at the moment for the blur
+        blurred_img = np.random.randint(5, size=68)
+        blurred_img = blurred_img.astype(np.float32)
+        blurred_img = torch.from_numpy(blurred_img)
+    # !! IDEA: make it so blurred image is where all labels are equally likely to happen (all 1/8 chance of being label)
+        print("blurred img:\t{}".format(blurred_img))
 
-    img_torch = preprocess_image(img, use_cuda, require_grad = False)
-    blurred_img_torch = preprocess_image(blurred_img, use_cuda, require_grad = False)
+    # EVAN: pre processing to turn data into torch versions and use cuda need be
+    # TODO: SHOULD look into moving the preprocessing into a new function that does this instead of in line
+    # img_torch = preprocess_image(img, use_cuda, require_grad = False)
+    # blurred_img_torch = preprocess_image(blurred_img, use_cuda, require_grad = False)
 
-    ori_output = model(img_torch)
-    blurred_output = model(blurred_img_torch)
+    # already torch vectors so okay to pass into model
+    ori_output = model(img)
+    blurred_output = model(blurred_img)
 
+    print("ori prediction:\t{}".format(ori_output))
+    # EVAN: more preprocessing to turn image into 1D tensor
     # compute the outputs for the original image and the blurred image
     if use_cuda:
         logitori = ori_output.data.cpu().numpy().copy().squeeze()
         logitblur = blurred_output.data.cpu().numpy().copy().squeeze()
     else:
         logitori = ori_output.data.numpy().copy().squeeze()
-        logitblur = blurred_output.data.cpu().numpy().copy().squeeze()
+        logitblur = blurred_output.data.numpy().copy().squeeze()
 
+
+    # EVAN: Everything below here is just printing information and 
+    # in case no top classification picked chooses default label though this logic is never returned?
+
+    print("logitori:\t{}".format(logitori))
 
     top_5_idx = np.argsort(logitori)[-5:]
     top_5_values = [logitori[i] for i in top_5_idx]
@@ -101,7 +117,8 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
 
     #print('ori_output:', ori_output[0, img_label], output_label)
     #print('blurred_output:', blurred_output[0, img_label], output_label_blur)
-    blur_ratio = blurred_output[0, img_label] / ori_output[0, img_label]
+    # EVAN: Not really sure what's going on here
+    # blur_ratio = blurred_output[0, img_label] / ori_output[0, img_label]
     #print('blur_ratio:', blur_ratio)
 
 
@@ -130,34 +147,51 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
     ####################################################
 
     # preprocess the input image and the baseline image
-    img = preprocess_image(img, use_cuda, require_grad=False)
-    blurred_img = preprocess_image(blurred_img, use_cuda, require_grad=False)
+    # EVAN: TODO: make this it's own thing as in the get_blurred_img function
+    # img = preprocess_image(img, use_cuda, require_grad=False)
+    # blurred_img = preprocess_image(blurred_img, use_cuda, require_grad=False)
 
+    # EVAN: already in vector form so no need to resize
     resize_size = img.data.shape
-    resize_wh = (img.data.shape[2], img.data.shape[3])
+    print("resize_size:\t{}".format(resize_size))
+    # NOTE: EVAN: as explaned in the following "NOTE" this would only be needed if blurred image is smaller than a 68 vector and 
+    #             would need to scale up but because that's not the case commenting out for now
+    # resize_wh = (img.data.shape[2], img.data.shape[3])
 
-    if use_cuda:
-        zero_img = Variable(torch.zeros(resize_size).cuda(), requires_grad=False)
-    else:
-        zero_img = Variable(torch.zeros(resize_size), requires_grad=False)
+    # EVAN: this zero_img is never used so commenting out for now
+    # if use_cuda:
+    #     zero_img = Variable(torch.zeros(resize_size).cuda(), requires_grad=False)
+    # else:
+    #     zero_img = Variable(torch.zeros(resize_size), requires_grad=False)
 
 
     # initialize the mask
-    mask_init = np.ones((size_init, size_init), dtype=np.float32)
-    mask = numpy_to_torch(mask_init, use_cuda, requires_grad=True)
+    # mask_init = np.ones((size_init, size_init), dtype=np.float32)
+    mask_init = np.ones(68, dtype=np.float32)#.squeeze()
+    # EVAN: NOTE: Not sure why numpyt_to_torch operation is used, seems like 
+    #       from_numpy is just fine. Possibly seems like numpy_to_torch is deprecated b/c can't seem to find documentation
+    # mask = numpy_to_torch(mask_init, requires_grad=True, use_cuda=1)
+    mask = torch.from_numpy(mask_init)#, requires_grad=True, use_cuda=0)
+    # mask = torch.squeeze(mask)
+    print("mask shape: {}".format(mask.shape))
+    print("mask:\t{}".format(mask))
 
-
-    if use_cuda:
-        upsample = torch.nn.UpsamplingBilinear2d(size=resize_wh).cuda()
-    else:
-        upsample = torch.nn.UpsamplingBilinear2d(size=resize_wh)
+    # EVAN: NOTE: This depends on the blurred image. If we were to use a small blur vector of 5 and then scale up to 68
+    #               then we should look into upsampling techniques of 1D vectors. As of now that is not needed b/c 
+    #               blurred image is already a 68 input vector
+    # if use_cuda:
+    #     upsample = torch.nn.UpsamplingBilinear2d(size=resize_wh).cuda()
+    # else:
+    #     upsample = torch.nn.UpsamplingBilinear2d(size=resize_wh)
 
     # You can choose any optimizer
     # The optimizer doesn't matter, because we don't need optimizer.step(), we just use it to compute the gradient
     optimizer = torch.optim.Adam([mask], lr=0.1)
-    #optimizer = torch.optim.SGD([mask], lr=0.1)
+    # optimizer = torch.optim.SGD([mask], lr=0.1)
 
-    target = torch.nn.Softmax(dim=1)(model(img))
+    # EVAN: Model already goes through a softmax layer so removing for now
+    # target = torch.nn.Softmax(dim=1)(model(img))
+    target = model(img)
     if use_cuda:
         category_out = np.argmax(target.cpu().data.numpy())
     else:
@@ -184,7 +218,10 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
     beta = 0.2
 
     for i in range(max_iterations):
-        upsampled_mask = upsample(mask)
+        # EVAN: No upsample as noted above in previose NOTEs
+        # upsampled_mask = upsample(mask)
+        upsampled_mask = mask
+
         # The single channel mask is used with an RGB image,
         # so the mask is duplicated to have 3 channels
         upsampled_mask = \
@@ -462,7 +499,8 @@ def showimage(del_img, insert_img, del_curve, insert_curve, target_path, xtick, 
 
 
 
-def Deletion_Insertion(mask, model, output_path, img_ori, blurred_img_ori, logitori, category, pixelnum = 200, use_cuda =1, blur_mask=0, outputfig = 1):
+def Deletion_Insertion(mask, model, output_path, img_ori, blurred_img_ori, logitori, 
+                        category, pixelnum = 200, use_cuda =1, blur_mask=0, outputfig = 1):
     ########################
     # Compute the deletion and insertion scores
     #
@@ -665,8 +703,8 @@ if __name__ == '__main__':
         os.makedirs(output_path)
     
     use_cuda = 0
-    if torch.cuda.is_available():
-        use_cuda = 1
+    # if torch.cuda.is_available():
+    #     use_cuda = 1
 
     files = os.listdir(input_path)
     model = load_model_new(use_cuda=use_cuda, model_name='q_function')  #
@@ -683,7 +721,7 @@ if __name__ == '__main__':
         # EVAN: indeneted to this comment
         # EVAN: input_img -- needs to be vector
         # EVAN: img_label -- not sure what to put this as keeping as -1
-    data = torch.load('test_dataset.pt')
+    data = torch.load('data/test_dataset.pt')
 
     data = np.asarray(data, dtype=np.float32)
     data = Variable(torch.from_numpy(data))
@@ -696,13 +734,13 @@ if __name__ == '__main__':
     # to have blurred image just randomly select input at that column from dataset and create janky one that pulls from entire
     # data set. This will create an input that spans all over the input space being impossible to predict i.e. "blurry"
     #*********************************************
-    input_img = []
+    input_img = data[0][0]
     img_label = -1
 
-    # EVAN: This is experimenting with different baselines not there yet...
+    # EVAN: This is generating blurred baseline a random array of 68 between 0 and 5 as of now
     img, blurred_img, logitori = Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224),
                                                     Gaussian_param=[51, 50],
-                                                    Median_param=11, blur_type='Gaussian', use_cuda=use_cuda)
+                                                    Median_param=11, blur_type='q_function', use_cuda=use_cuda)
 
     # EVAN: This is giving the mask back
     mask, upsampled_mask, imgratio, curvetop, curve1, curve2, category = Integrated_Mask(img, blurred_img, model,
