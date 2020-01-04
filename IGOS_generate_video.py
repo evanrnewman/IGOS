@@ -222,16 +222,26 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         # upsampled_mask = upsample(mask)
         upsampled_mask = mask
 
+        # EVAN: not needed as vector so no RGB channels needed
         # The single channel mask is used with an RGB image,
         # so the mask is duplicated to have 3 channels
-        upsampled_mask = \
-            upsampled_mask.expand(1, 3, upsampled_mask.size(2), \
-                                  upsampled_mask.size(3))
+        # upsampled_mask = \
+        #     upsampled_mask.expand(1, 3, upsampled_mask.size(2), \
+        #                           upsampled_mask.size(3))
 
+
+        # EVAN: NOTE: The toal variation is suppose to help with smoothness as the name suggests
+        #               probably taking the total variation and normalizing it
+        #               However, this seems only relevant to images as the smoothness helps the pixels between eachother
+        #               not be so drastic. The vector we have though should be different from each other as each one
+        #               reflects a different meaning, unlike an image which is to communicate one thing with all it's pixels
+        #       NOTE: The l1 term will help penilize all 0 masks which we would like to use
+        #               BUT having an all 0 mask would still symbolize a State so not sure
+        #       TODO: Talk to Alan about this issue
 
         # the l1 term and the total variation term
-        loss1 = l1_coeff * torch.mean(torch.abs(1 - mask)) + \
-                tv_coeff * tv_norm(mask, tv_beta)
+        loss1 = l1_coeff * torch.mean(torch.abs(1 - mask)) #+ \
+                # tv_coeff * tv_norm(mask, tv_beta)
         loss_all = loss1.clone()
 
         # compute the perturbed image
@@ -242,6 +252,10 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         for inte_i in range(integ_iter):
 
 
+            # EVAN: the more loops the less the mask is perturbed
+            #       seems like it's just getting a lower percent of the original mask which is just all 1's
+            #       so first iteration will be getting a mask filled with just 1/20=0.05 values and ticks up with each iteration
+
             # Use the mask to perturbated the input image.
             integ_mask = 0.0 + ((inte_i + 1.0) / integ_iter) * upsampled_mask
 
@@ -249,15 +263,23 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             perturbated_input_integ = img.mul(integ_mask) + \
                                      blurred_img.mul(1 - integ_mask)
 
+            # EVAN: not sure if noise is needed for our vector stuff I'm going to keep it in for now 
+            #       NOTE: if causes issues further ahead should remove noise logic for mask
+
             # add noise
-            noise = np.zeros((resize_wh[0], resize_wh[1], 3), dtype=np.float32)
+            # noise = np.zeros((resize_wh[0], resize_wh[1], 3), dtype=np.float32)
+            noise = np.zeros(68, dtype=np.float32)
             noise = noise + cv2.randn(noise, 0, 0.2)
-            noise = numpy_to_torch(noise, use_cuda, requires_grad=False)
+            noise = torch.from_numpy(noise)
+            # EVAN: same issues noted above about this function so using from_numpy for now
+            # noise = numpy_to_torch(noise, use_cuda, requires_grad=False)
 
             perturbated_input = perturbated_input_integ + noise
 
             new_image = perturbated_input
-            outputs = torch.nn.Softmax(dim=1)(model(new_image))
+            # EVAN: model already has softmax so no need to pass it through this layer
+            # outputs = torch.nn.Softmax(dim=1)(model(new_image))
+            outputs = model(new_image)
             loss2 = outputs[0, category]
 
             loss_all = loss_all + loss2/20.0
@@ -269,7 +291,9 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         loss_all.backward()
         whole_grad = mask.grad.data.clone()
 
-        loss2_ori = torch.nn.Softmax(dim=1)(model(perturbated_input_base))[0, category]
+        # EVAN: model already has softmax layer
+        # loss2_ori = torch.nn.Softmax(dim=1)(model(perturbated_input_base))[0, category]
+        loss2_ori = model(perturbated_input_base)[0, category]
 
 
 
@@ -302,12 +326,15 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         MaskClone.data.clamp_(0, 1) # clamp the value of mask in [0,1]
 
 
-        mask_LS = upsample(MaskClone)   # Here the direction is the whole_grad
+        # EVAN: same issues mentioned above upsample not needed as of NOW
+        # mask_LS = upsample(MaskClone)   # Here the direction is the whole_grad
+        mask_LS = MaskClone
         Img_LS = img.mul(mask_LS) + \
                  blurred_img.mul(1 - mask_LS)
-        outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
-        loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) + \
-                  tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
+        # outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
+        outputsLS = model(Img_LS)
+        loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) #+ \
+                #   tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
 
         if use_cuda:
             loss_LSdata = loss_LS.data.cpu().numpy()
@@ -326,12 +353,14 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             MaskClone -= step * whole_grad
             MaskClone = Variable(MaskClone, requires_grad=False)
             MaskClone.data.clamp_(0, 1)
-            mask_LS = upsample(MaskClone)
+            # mask_LS = upsample(MaskClone)
+            mask_LS = MaskClone
             Img_LS = img.mul(mask_LS) + \
                      blurred_img.mul(1 - mask_LS)
-            outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
-            loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) + \
-                      tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
+            # outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
+            outputsLS = model(Img_LS)
+            loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) # + \
+                    #   tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
 
             if use_cuda:
                 loss_LSdata = loss_LS.data.cpu().numpy()
@@ -376,13 +405,15 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             Masktop = torch.from_numpy(maskdata)
         # Use the mask to perturbated the input image.
         Masktop = Variable(Masktop, requires_grad=False)
-        MasktopLS = upsample(Masktop)
+        # MasktopLS = upsample(Masktop)
+        MasktopLS = Masktop
 
         Img_topLS = img.mul(MasktopLS) + \
                     blurred_img.mul(1 - MasktopLS)
-        outputstopLS = torch.nn.Softmax(dim=1)(model(Img_topLS))
-        loss_top1 = l1_coeff * torch.mean(torch.abs(1 - Masktop)) + \
-                    tv_coeff * tv_norm(Masktop, tv_beta)
+        # outputstopLS = torch.nn.Softmax(dim=1)(model(Img_topLS))
+        outputstopLS = model(Img_topLS)
+        loss_top1 = l1_coeff * torch.mean(torch.abs(1 - Masktop)) #+ \
+                    # tv_coeff * tv_norm(Masktop, tv_beta)
         loss_top2 = outputstopLS[0, category]
 
         if use_cuda:
@@ -406,7 +437,8 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
             #######################################################################################
 
-    upsampled_mask = upsample(mask)
+    # upsampled_mask = upsample(mask)
+    upsampled_mask = mask
 
     if use_cuda:
         mask = mask.data.cpu().numpy().copy()
