@@ -79,6 +79,14 @@ def preprocess_image(img, use_cuda=1, require_grad = False):
     preprocessed_img_tensor.unsqueeze_(0)
     return Variable(preprocessed_img_tensor, requires_grad=require_grad)
 
+def preprocess_qfunction(img, use_cuda=1, require_grad = False):
+    if use_cuda:
+        preprocessed_img_tensor = torch.from_numpy(img).cuda()
+    else:
+        preprocessed_img_tensor = torch.from_numpy(img)
+
+    return Variable(preprocessed_img_tensor, requires_grad=require_grad)
+   
 
 
 def numpy_to_torch(img, use_cuda=1, requires_grad=False):

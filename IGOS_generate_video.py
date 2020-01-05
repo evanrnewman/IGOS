@@ -68,18 +68,19 @@ def Get_blurred_img(input_img, img_label, model, resize_shape=(224, 224), Gaussi
         # Totally random array at the moment for the blur
         blurred_img = np.random.randint(5, size=68)
         blurred_img = blurred_img.astype(np.float32)
-        blurred_img = torch.from_numpy(blurred_img)
     # !! IDEA: make it so blurred image is where all labels are equally likely to happen (all 1/8 chance of being label)
-        print("blurred img:\t{}".format(blurred_img))
 
     # EVAN: pre processing to turn data into torch versions and use cuda need be
-    # TODO: SHOULD look into moving the preprocessing into a new function that does this instead of in line
     # img_torch = preprocess_image(img, use_cuda, require_grad = False)
     # blurred_img_torch = preprocess_image(blurred_img, use_cuda, require_grad = False)
+    img_torch = preprocess_qfunction(img, use_cuda, require_grad = False)
+    blurred_img_torch = preprocess_qfunction(blurred_img, use_cuda, require_grad = False)
+    
+    print("blurred img:\t{}".format(blurred_img_torch))
 
     # already torch vectors so okay to pass into model
-    ori_output = model(img)
-    blurred_output = model(blurred_img)
+    ori_output = model(img_torch)
+    blurred_output = model(blurred_img_torch)
 
     print("ori prediction:\t{}".format(ori_output))
     # EVAN: more preprocessing to turn image into 1D tensor
@@ -147,9 +148,10 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
     ####################################################
 
     # preprocess the input image and the baseline image
-    # EVAN: TODO: make this it's own thing as in the get_blurred_img function
     # img = preprocess_image(img, use_cuda, require_grad=False)
     # blurred_img = preprocess_image(blurred_img, use_cuda, require_grad=False)
+    img = preprocess_qfunction(img, use_cuda, require_grad=False)
+    blurred_img = preprocess_qfunction(blurred_img, use_cuda, require_grad=False)
 
     # EVAN: already in vector form so no need to resize
     resize_size = img.data.shape
@@ -170,8 +172,8 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
     mask_init = np.ones(68, dtype=np.float32)#.squeeze()
     # EVAN: NOTE: Not sure why numpyt_to_torch operation is used, seems like 
     #       from_numpy is just fine. Possibly seems like numpy_to_torch is deprecated b/c can't seem to find documentation
-    # mask = numpy_to_torch(mask_init, requires_grad=True, use_cuda=1)
-    mask = torch.from_numpy(mask_init)#, requires_grad=True, use_cuda=0)
+    mask = preprocess_qfunction(mask_init, require_grad=True, use_cuda=0)
+    # mask = torch.from_numpy(mask_init)#, requires_grad=True, use_cuda=0)
     # mask = torch.squeeze(mask)
     print("mask shape: {}".format(mask.shape))
     print("mask:\t{}".format(mask))
@@ -270,9 +272,9 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             # noise = np.zeros((resize_wh[0], resize_wh[1], 3), dtype=np.float32)
             noise = np.zeros(68, dtype=np.float32)
             noise = noise + cv2.randn(noise, 0, 0.2)
-            noise = torch.from_numpy(noise)
             # EVAN: same issues noted above about this function so using from_numpy for now
             # noise = numpy_to_torch(noise, use_cuda, requires_grad=False)
+            noise = preprocess_qfunction(noise, use_cuda, require_grad=False)
 
             perturbated_input = perturbated_input_integ + noise
 
@@ -280,20 +282,25 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             # EVAN: model already has softmax so no need to pass it through this layer
             # outputs = torch.nn.Softmax(dim=1)(model(new_image))
             outputs = model(new_image)
-            loss2 = outputs[0, category]
+            # loss2 = outputs[0, category]
+            loss2 = outputs[category]
 
             loss_all = loss_all + loss2/20.0
 
 
+        print("loss_all:\t{}".format(loss_all))
         # compute the integrated gradients for the given target,
         # and compute the gradient for the l1 term and the total variation term
         optimizer.zero_grad()
         loss_all.backward()
-        whole_grad = mask.grad.data.clone()
+        # EVAN: apparently same thing? "weight.grad.data = weight.grad" so leaving data out for now
+        # whole_grad = mask.grad.data.clone()
+        print(mask.grad)
+        whole_grad = mask.grad.clone()
 
         # EVAN: model already has softmax layer
         # loss2_ori = torch.nn.Softmax(dim=1)(model(perturbated_input_base))[0, category]
-        loss2_ori = model(perturbated_input_base)[0, category]
+        loss2_ori = model(perturbated_input_base)[category]
 
 
 
@@ -333,7 +340,7 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
                  blurred_img.mul(1 - mask_LS)
         # outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
         outputsLS = model(Img_LS)
-        loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) #+ \
+        loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) + outputsLS[category] #+ \
                 #   tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
 
         if use_cuda:
@@ -359,7 +366,7 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
                      blurred_img.mul(1 - mask_LS)
             # outputsLS = torch.nn.Softmax(dim=1)(model(Img_LS))
             outputsLS = model(Img_LS)
-            loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) # + \
+            loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) + outputsLS[category] # + \
                     #   tv_coeff * tv_norm(MaskClone, tv_beta) + outputsLS[0, category]
 
             if use_cuda:
@@ -754,15 +761,14 @@ if __name__ == '__main__':
         # EVAN: input_img -- needs to be vector
         # EVAN: img_label -- not sure what to put this as keeping as -1
     data = torch.load('data/test_dataset.pt')
-
     data = np.asarray(data, dtype=np.float32)
-    data = Variable(torch.from_numpy(data))
+    # data = Variable(torch.from_numpy(data))
     # print(data[0][0], data[0][1])
-    print(data[0][0])
-    print(type(data[0][0][0]))
+    # print(data[0][0])
+    # print(type(data[0][0][0]))
 
-    prediction = model(data[0][0])
-    print(prediction)
+    # prediction = model(data[0][0])
+    # print(prediction)
     # to have blurred image just randomly select input at that column from dataset and create janky one that pulls from entire
     # data set. This will create an input that spans all over the input space being impossible to predict i.e. "blurry"
     #*********************************************
@@ -783,7 +789,7 @@ if __name__ == '__main__':
                                                                                                 l1_coeff=0.01 * 100,
                                                                                                 tv_coeff=0.2 * 100,
                                                                                                 size_init=28,
-                                                                                                use_cuda=1)  #
+                                                                                                use_cuda=use_cuda)  #
 
 
 
