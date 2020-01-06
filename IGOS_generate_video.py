@@ -254,9 +254,9 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         for inte_i in range(integ_iter):
 
 
-            # EVAN: the more loops the less the mask is perturbed
+            # EVAN: with each loop the less the mask is perturbed
             #       seems like it's just getting a lower percent of the original mask which is just all 1's
-            #       so first iteration will be getting a mask filled with just 1/20=0.05 values and ticks up with each iteration
+            #       so first iteration will be getting a mask filled with just 1/20=0.05 values and ticks up with each iteration so 2/20=0.1
 
             # Use the mask to perturbated the input image.
             integ_mask = 0.0 + ((inte_i + 1.0) / integ_iter) * upsampled_mask
@@ -288,14 +288,15 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             loss_all = loss_all + loss2/20.0
 
 
-        print("loss_all:\t{}".format(loss_all))
         # compute the integrated gradients for the given target,
         # and compute the gradient for the l1 term and the total variation term
         optimizer.zero_grad()
+        # EVAN: NOTE: loss_all is a constant so I have no idea why this .backward() manuever is necessary
         loss_all.backward()
+        print("loss_all:\t{}".format(loss_all))
         # EVAN: apparently same thing? "weight.grad.data = weight.grad" so leaving data out for now
         # whole_grad = mask.grad.data.clone()
-        print(mask.grad)
+        print("mask:\t{}".format(mask.grad))
         whole_grad = mask.grad.clone()
 
         # EVAN: model already has softmax layer
@@ -304,7 +305,10 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
 
 
+        # EVAN: NOTE: a bit confused here loss1 is [3 * mean(1-mask)] not sure what loss1 is helping
         loss_ori = loss1 + loss2_ori
+        # EVAN: NOTE: is appending the loss data to these curves with each iteration
+        #             these variables are only for book keeping
         if i==0:
             if use_cuda:
                 curve1 = np.append(curve1, loss1.data.cpu().numpy())
@@ -419,9 +423,13 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
                     blurred_img.mul(1 - MasktopLS)
         # outputstopLS = torch.nn.Softmax(dim=1)(model(Img_topLS))
         outputstopLS = model(Img_topLS)
+        outputstopLS = outputstopLS.squeeze()
         loss_top1 = l1_coeff * torch.mean(torch.abs(1 - Masktop)) #+ \
                     # tv_coeff * tv_norm(Masktop, tv_beta)
-        loss_top2 = outputstopLS[0, category]
+        # loss_top2 = outputstopLS[0, category]
+        print(outputstopLS)
+        print(category)
+        loss_top2 = outputstopLS[category]
 
         if use_cuda:
             curvetop = np.append(curvetop, loss_top2.data.cpu().numpy())

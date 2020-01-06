@@ -172,6 +172,7 @@ def load_model_new(use_cuda = 1, model_name = 'resnet50'):
         model = qFunction()
 
         model.load_state_dict(torch.load("q_model_decom8_grid.pt"), strict=False)
+        # model.load_state_dict(torch.load("q_model_decom8_grid.pt", map_location='cpu'), strict=False)
 
     #print(model)
     model.eval()
