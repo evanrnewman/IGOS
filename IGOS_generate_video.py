@@ -170,8 +170,6 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
     # initialize the mask
     # mask_init = np.ones((size_init, size_init), dtype=np.float32)
     mask_init = np.ones(68, dtype=np.float32)#.squeeze()
-    # EVAN: NOTE: Not sure why numpyt_to_torch operation is used, seems like 
-    #       from_numpy is just fine. Possibly seems like numpy_to_torch is deprecated b/c can't seem to find documentation
     mask = preprocess_qfunction(mask_init, require_grad=True, use_cuda=0)
     # mask = torch.from_numpy(mask_init)#, requires_grad=True, use_cuda=0)
     # mask = torch.squeeze(mask)
@@ -209,7 +207,7 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
 
 
-
+    # EVAN: These arrays just here for book keeping on the losses of certain loss computations
     curve1 = np.array([])
     curve2 = np.array([])
     curvetop = np.array([])
@@ -256,7 +254,8 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
             # EVAN: with each loop the less the mask is perturbed
             #       seems like it's just getting a lower percent of the original mask which is just all 1's
-            #       so first iteration will be getting a mask filled with just 1/20=0.05 values and ticks up with each iteration so 2/20=0.1
+            #       so first iteration will be getting a mask filled with just 1/20=0.05 values and ticks up 0.05
+            #       with each iteration so 2/20=0.1, 3/20=0.15, etc.
 
             # Use the mask to perturbated the input image.
             integ_mask = 0.0 + ((inte_i + 1.0) / integ_iter) * upsampled_mask
@@ -272,7 +271,6 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             # noise = np.zeros((resize_wh[0], resize_wh[1], 3), dtype=np.float32)
             noise = np.zeros(68, dtype=np.float32)
             noise = noise + cv2.randn(noise, 0, 0.2)
-            # EVAN: same issues noted above about this function so using from_numpy for now
             # noise = numpy_to_torch(noise, use_cuda, requires_grad=False)
             noise = preprocess_qfunction(noise, use_cuda, require_grad=False)
 
@@ -283,8 +281,14 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
             # outputs = torch.nn.Softmax(dim=1)(model(new_image))
             outputs = model(new_image)
             # loss2 = outputs[0, category]
+            # EVAN: Calculate the loss of this new image on the label w/ highest prediction after it's been perturbed
             loss2 = outputs[category]
 
+            # EVAN: continue this 20 times.
+            #       The further iterations you go the less the mask will be modified (eventually all 1's) after which the image
+            #       is the original image again so the loss should be much less compared to the beginning which is why the
+            #       loss2/20.0 is put in place because early on the image should be very far from it's original prediction so
+            #       should be penelized less for the prediction
             loss_all = loss_all + loss2/20.0
 
 
@@ -292,6 +296,9 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         # and compute the gradient for the l1 term and the total variation term
         optimizer.zero_grad()
         # EVAN: NOTE: loss_all is a constant so I have no idea why this .backward() manuever is necessary
+        #       I believe this changes the mask to do a better job in making the loss lower in turn increasing the accuracy of the
+        #       prediction of the image despite what is being messed with
+        #       mask will get better at just showing the important parts of the image for the prediction to still predict correctly
         loss_all.backward()
         print("loss_all:\t{}".format(loss_all))
         # EVAN: apparently same thing? "weight.grad.data = weight.grad" so leaving data out for now
@@ -301,11 +308,12 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
         # EVAN: model already has softmax layer
         # loss2_ori = torch.nn.Softmax(dim=1)(model(perturbated_input_base))[0, category]
+        # EVAN: run through prediction with original mask used (basically the original img of clean 68 vector input)
         loss2_ori = model(perturbated_input_base)[category]
 
 
 
-        # EVAN: NOTE: a bit confused here loss1 is [3 * mean(1-mask)] not sure what loss1 is helping
+        # EVAN: NOTE: a bit confused here loss1 is [3 * mean(1-mask)] not sure what loss1 is measuring
         loss_ori = loss1 + loss2_ori
         # EVAN: NOTE: is appending the loss data to these curves with each iteration
         #             these variables are only for book keeping
@@ -388,6 +396,8 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
 
         mask.data -= step * whole_grad
 
+        # EVAN: Everything below here is for data keeping so not very relevant for IGOS forumla 
+        #       EXCEPT for adjusting the l1_coeff term so it has some influence on loss1
         #######################################################################################################
 
 
@@ -404,6 +414,8 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         else:
             maskdata = mask.data.numpy()
 
+        # EVAN: I don't believe this topmaxPixel is going to help becuase this would only be relevent for images
+        #       However, all this stuff below is for data logging it seems. These variable not used to influence the mask
         maskdata = np.squeeze(maskdata)
         maskdata, imgratio = topmaxPixel(maskdata, 40)
         maskdata = np.expand_dims(maskdata, axis=0)
