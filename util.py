@@ -25,6 +25,12 @@ Tensor = FloatTensor
 
 
 def topmaxPixel(HattMap, thre_num):
+    # EVAN: So basically 
+    #       1) flatten the mask
+    #       2) grab first 40 idx positions of if the array was sorted from smallest to highest pixel value
+    #       3) then reshape it back to the same shape as what the mask came in as
+    # EVAN: TODO: understand what the inputs look like and how this function is influencing the mask
+    #             because seems to have the most important role in this algorithm
     ii = np.unravel_index(np.argsort(HattMap.ravel())[: thre_num], HattMap.shape)
     #print(ii)
     OutHattMap = HattMap*0

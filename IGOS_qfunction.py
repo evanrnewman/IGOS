@@ -49,11 +49,11 @@ def Get_blurred_img():
 
 def see_top_labels(input_img, blurred_img, model, use_cuda):
 
-    img_torch = preprocess_qfunction(input_img, use_cuda, require_grad = False)
+    img_torch         = preprocess_qfunction(input_img,   use_cuda, require_grad = False)
     blurred_img_torch = preprocess_qfunction(blurred_img, use_cuda, require_grad = False)
 
-    ori_output = model(img_torch).data.numpy()
-    blurred_output = model(blurred_img_torch).data.numpy()
+    ori_output     = is_using_cuda( model(img_torch),         use_cuda )
+    blurred_output = is_using_cuda( model(blurred_img_torch), use_cuda )
 
     top_idxs = np.argsort(ori_output)
     top_values = [ori_output[i] for i in top_idxs]
@@ -62,11 +62,19 @@ def see_top_labels(input_img, blurred_img, model, use_cuda):
     for i in reversed(range(len(ori_output))):
         print("  {}\t{}".format(top_idxs[i], top_values[i]))
 
+def is_using_cuda(data_term, use_cuda):
+    if use_cuda:
+        data_term = data_term.data.cpu().numpy()
+    else:
+        data_term = data_term.data.numpy()
 
-def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0, 
+    return data_term
+
+
+def Integrated_Mask(img, blurred_img, model, category, use_cuda = 0, 
                     max_iterations = 15, integ_iter = 20, l1_coeff = 0.01 * 300):
 
-    input_img = preprocess_qfunction(input_img, use_cuda, require_grad=False)
+    img = preprocess_qfunction(img, use_cuda, require_grad=False)
     blurred_img = preprocess_qfunction(blurred_img, use_cuda, require_grad=False)
 
 
@@ -76,8 +84,8 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
     optimizer = torch.optim.Adam([mask], lr=0.1)
     # optimizer = torch.optim.SGD([mask], lr=0.1)
 
-    target = model(img).data.numpy()
-    category_out = np.argmax(target.data.numpy())
+    target = is_using_cuda( model(img), use_cuda )
+    category_out = np.argmax(target)
 
     if category == -1:
         category = category_out
@@ -85,6 +93,10 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
     print("Category with highest probability", category_out)
     print("Category want to generate mask", category)
     print("Optimizing.. ")
+
+    curve1 = np.array([])
+    curve2 = np.array([])
+    curvetop = np.array([])
 
     alpha = 0.0001
     beta = 0.2
@@ -98,7 +110,7 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
 
         for inte_i in range(integ_iter):
 
-            integ_mask = 0.0 + ((inte_i + 1.0) / integ_iter) * upsampled_mask
+            integ_mask = 0.0 + ((inte_i + 1.0) / integ_iter) * mask
 
             perturbated_input_integ = img.mul(integ_mask) + blurred_img.mul(1 - integ_mask)
 
@@ -122,7 +134,18 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
 
         loss2_ori = model(perturbated_input_base)[category]
         loss_ori = loss1 + loss2_ori
-        loss_oridata = loss_ori.data.numpy()
+        loss_oridata = is_using_cuda( loss_ori, use_cuda )
+
+        if i==0:
+            if use_cuda:
+                curve1 = np.append(curve1, loss1.data.cpu().numpy())
+                curve2 = np.append(curve2, loss2_ori.data.cpu().numpy())
+                curvetop = np.append(curvetop, loss2_ori.data.cpu().numpy())
+
+            else:
+                curve1 = np.append(curve1, loss1.data.numpy())
+                curve2 = np.append(curve2, loss2_ori.data.numpy())
+                curvetop = np.append(curvetop, loss2_ori.data.numpy())
 
 
         step = 200.0
@@ -139,7 +162,7 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
             outputsLS = model(Img_LS)
             loss_LS = l1_coeff * torch.mean(torch.abs(1 - MaskClone)) + outputsLS[category]
 
-            loss_LSdata = loss_LS.data.numpy()
+            loss_LSdata = is_using_cuda( loss_LS, use_cuda )
 
 
             new_condition = whole_grad ** 2  # Here the direction is the whole_grad
@@ -155,9 +178,54 @@ def Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda = 0,
             step *= beta
 
 
+        if use_cuda:
+            curve1 = np.append(curve1, loss1.data.cpu().numpy())
+            curve2 = np.append(curve2, loss2_ori.data.cpu().numpy())
+        else:
+            curve1 = np.append(curve1, loss1.data.numpy())
+            curve2 = np.append(curve2, loss2_ori.data.numpy())
+
+
         mask.data -= step * whole_grad
         mask.data.clamp_(0, 1)
-        maskdata = mask.data.numpy()
+        maskdata = is_using_cuda( mask, use_cuda )
+
+        # TODO: figure out if this is needed and if so what it should change to
+        maskdata, imgratio = topmaxPixel(maskdata, 40)
+
+        Masktop = preprocess_qfunction(maskdata, use_cuda, require_grad=False)
+
+        MasktopLS = Masktop
+
+        Img_topLS = img.mul(MasktopLS) + blurred_img.mul(1 - MasktopLS)
+
+        outputstopLS = model(Img_topLS)
+        loss_top1 = l1_coeff * torch.mean(torch.abs(1 - Masktop))
+
+        print("outputstopLS:\t{}".format(outputstopLS))
+        print("category:\t{}".format(category))
+        print("mask:\t{}".format(maskdata))
+
+        loss_top2 = outputstopLS[category]
+
+
+        if max_iterations >3:
+
+            if i == int(max_iterations / 2):
+                if np.abs(curve2[0] - curve2[i]) <= 0.001:
+                    print('Adjust Parameter l1_coeff at iteration:', int(max_iterations / 2))
+                    l1_coeff = l1_coeff / 10
+
+            elif i == int(max_iterations / 1.25):
+                if np.abs(curve2[0] - curve2[i]) <= 0.01:
+                    print('Adjust Parameters l1_coeff again at iteration:', int(max_iterations / 1.25))
+                    l1_coeff = l1_coeff / 5
+
+    mask = is_using_cuda( mask, use_cuda ).copy()
+
+    return mask, category
+
+
 
 
 

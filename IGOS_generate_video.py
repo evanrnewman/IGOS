@@ -414,12 +414,13 @@ def Integrated_Mask(img, blurred_img, model, category, max_iterations = 15, inte
         else:
             maskdata = mask.data.numpy()
 
-        # EVAN: I don't believe this topmaxPixel is going to help becuase this would only be relevent for images
-        #       However, all this stuff below is for data logging it seems. These variable not used to influence the mask
-        maskdata = np.squeeze(maskdata)
+        print("maskdata:\t{}".format(maskdata))
+        # EVAN: I don't believe this topmaxPixel is going to help because this would only be relevent for images
+        # maskdata = np.squeeze(maskdata) # no need for squeeze should already be done b/c is 1D vector
         maskdata, imgratio = topmaxPixel(maskdata, 40)
-        maskdata = np.expand_dims(maskdata, axis=0)
-        maskdata = np.expand_dims(maskdata, axis=0)
+        print("maskdata after topmaxpixel:\t{}".format(maskdata))
+        # maskdata = np.expand_dims(maskdata, axis=0)
+        # maskdata = np.expand_dims(maskdata, axis=0)
 
         ###############################################
         if use_cuda:
