@@ -31,8 +31,6 @@ def main():
 
     see_top_labels(input_img, blurred_img, model, use_cuda)
 
-    # TODO: make function that will do the check of use_cuda and return the proper data information
-
     mask, category = Integrated_Mask(input_img, blurred_img, model, img_label, use_cuda,
                                     max_iterations=15, integ_iter=20, l1_coeff=0.01 * 100)
 
@@ -202,6 +200,7 @@ def Integrated_Mask(img, blurred_img, model, category, use_cuda = 0,
         outputstopLS = model(Img_topLS)
         loss_top1 = l1_coeff * torch.mean(torch.abs(1 - Masktop))
 
+        print("iteration:{}".format(i))
         print("outputstopLS:\t{}".format(outputstopLS))
         print("category:\t{}".format(category))
         print("mask:\t{}".format(maskdata))

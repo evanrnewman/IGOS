@@ -31,13 +31,20 @@ def topmaxPixel(HattMap, thre_num):
     #       3) then reshape it back to the same shape as what the mask came in as
     # EVAN: TODO: understand what the inputs look like and how this function is influencing the mask
     #             because seems to have the most important role in this algorithm
+    print("HattMap:\t{}".format(HattMap))
+    what = HattMap.ravel()
+    print("HattMap ravel:\t{}".format(what))
+    huh = np.argsort(what)[:thre_num]
+    print("HattMap argsort top 40:\t{}".format(huh))
+    print("HattMap shape:\t{}".format(HattMap.shape))
     ii = np.unravel_index(np.argsort(HattMap.ravel())[: thre_num], HattMap.shape)
+    print("ii:\t{}".format(ii))
     #print(ii)
     OutHattMap = HattMap*0
     OutHattMap[ii] = 1
 
     img_ratio = np.sum(OutHattMap) / OutHattMap.size
-    #print(OutHattMap.size)
+    print("outhatmap:\t{}".format(OutHattMap.size))
     OutHattMap = 1 - OutHattMap
 
 
