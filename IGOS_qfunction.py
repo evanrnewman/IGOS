@@ -59,6 +59,7 @@ def see_top_labels(input_img, blurred_img, model, use_cuda):
     print('Index\tPrediction Score')
     for i in reversed(range(len(ori_output))):
         print("  {}\t{}".format(top_idxs[i], top_values[i]))
+    print("ori_output:\t{}".format(ori_output))
 
 def is_using_cuda(data_term, use_cuda):
     if use_cuda:
@@ -188,8 +189,8 @@ def Integrated_Mask(img, blurred_img, model, category, use_cuda = 0,
         mask.data.clamp_(0, 1)
         maskdata = is_using_cuda( mask, use_cuda )
 
-        # TODO: figure out if this is needed and if so what it should change to
-        maskdata, imgratio = topmaxPixel(maskdata, 40)
+        # EVAN: This is a necessary process to pick the most important pixels to mask out, how many is up to us
+        maskdata, imgratio = topmaxPixel(maskdata, 3)
 
         Masktop = preprocess_qfunction(maskdata, use_cuda, require_grad=False)
 
