@@ -35,6 +35,7 @@ def main():
                                     max_iterations=15, integ_iter=20, l1_coeff=0.01 * 100)
 
 
+    interpret_mask_meaning(mask)
 
 
 
@@ -225,6 +226,50 @@ def Integrated_Mask(img, blurred_img, model, category, use_cuda = 0,
 
     return mask, category
 
+
+def interpret_mask_meaning(mask):
+
+    key_input = ["player 1 unspent minerals",
+                 "player 1 top lane buildings ",
+                 "player 1 bottom lane buildings ",
+                 "player 1 pylons",
+                 "player 2 top lane buildings ",
+                 "player 2 bottom lane buildings ",
+                 "player 2 pylons",
+                 "player 1 units top lane grid 1 ",
+                 "player 1 units top lane grid 2 ",
+                 "player 1 units top lane grid 3 ",
+                 "player 1 units top lane grid 4 ",
+                 "player 1 units bottom lane grid 1 ",
+                 "player 1 units bottom lane grid 2 ",
+                 "player 1 units bottom lane grid 3 ",
+                 "player 1 units bottom lane grid 4 ",
+                 "player 2 units top lane grid 1 ",
+                 "player 2 units top lane grid 2 ",
+                 "player 2 units top lane grid 3 ",
+                 "player 2 units top lane grid 4 ",
+                 "player 2 units bottom lane grid 1 ",
+                 "player 2 units bottom lane grid 2 ",
+                 "player 2 units bottom lane grid 3 ",
+                 "player 2 units bottom lane grid 4 ",
+                 "player 1 nexus HP top lane",
+                 "player 1 nexus HP bottom lane",
+                 "player 2 nexus HP top lane",
+                 "player 2 nexus HP bottom lane",
+                 "wave number"]
+
+    units = ["marine", "bane", "immortal"]
+
+    idx = 0
+    for key in key_input:
+        if key[-1] == " ":
+            for unit in units:
+                print("{} | {:<50} = {}".format(str(idx), (key + unit), mask[idx]))
+                idx += 1
+        else:
+            print("{} | {:<50} = {}".format(str(idx), key, mask[idx]))
+            idx += 1
+            
 
 
 
